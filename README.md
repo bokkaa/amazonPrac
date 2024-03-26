@@ -2,6 +2,46 @@
 
 ### AmazonS3, RDS, MySql 연동 확인
 
+
+### 공통 클래스
+
+- com.example.amazon_1.config.CloudAws.java
+
+```java
+
+public class CloudAws {
+
+    @Value("${cloud.aws.credentials.access-key}")
+    private static String accessKey;
+
+    @Value("${cloud.aws.credentials.secret-key}")
+    private static String secretKey;
+
+    @Value("${cloud.aws.region.static}")
+    private static String region;
+
+    @Value("${cloud.aws.s3.bucket}")
+    private static String bucket;
+
+    public static String getAccessKey(){
+        return accessKey;
+    }
+
+    public static String getSecretKey() {
+        return secretKey;
+    }
+
+    public static String getRegion() {
+        return region;
+    }
+
+    public static String getBucket() {
+        return bucket;
+    }
+}
+
+```
+
 ### S3 설정
 
 - com.example.amazon_1.config.AwsS3Config.java
@@ -12,26 +52,15 @@
 @RequiredArgsConstructor
 public class AwsS3Config {
 
-    @Value("${cloud.aws.credentials.access-key}")
-    private  String accessKey;
+@Bean
+public AmazonS3Client amazonS3Client(){
 
-    @Value("${cloud.aws.credentials.secret-key}")
-    private  String secretKey;
+    BasicAWSCredentials creds = new BasicAWSCredentials(CloudAws.getAccessKey(), CloudAws.getSecretKey());
 
-    @Value("${cloud.aws.region.static}")
-    private  String region;
-
-
-    @Bean
-    public AmazonS3Client amazonS3Client(){
-
-        BasicAWSCredentials creds = new BasicAWSCredentials(accessKey, secretKey);
-
-        return (AmazonS3Client) AmazonS3ClientBuilder.standard()
-                .withCredentials(new AWSStaticCredentialsProvider(creds))
-                .withRegion(region)
-                .build();
-
+    return (AmazonS3Client) AmazonS3ClientBuilder.standard()
+            .withCredentials(new AWSStaticCredentialsProvider(creds))
+            .withRegion(CloudAws.getRegion())
+            .build();
     }
 }
 
@@ -131,14 +160,8 @@ public class IndexRestController {
 @RequiredArgsConstructor
 public class AwsService {
 
-    @Value("${cloud.aws.region.static}")
-    private String region;
-    @Value("${cloud.aws.s3.bucket}")
-    private String bucket;
-
     private final ImageRepository imageRepository;
     private final AmazonS3 amazonS3;
-
 
     /**
      * 파일 저장
@@ -153,7 +176,7 @@ public class AwsService {
         multipartFiles.forEach(files -> {
 
             String fileName = convertFileName(files.getOriginalFilename());
-            String Url = "https://" + bucket + ".s3." + region + ".amazonaws.com/" + fileName;
+            String Url = "https://" + CloudAws.getBucket() + ".s3." + CloudAws.getRegion() + ".amazonaws.com/" + fileName;
 
             ObjectMetadata objectMetadata = new ObjectMetadata();
             objectMetadata.setContentLength(files.getSize());
@@ -161,8 +184,7 @@ public class AwsService {
 
             try(InputStream inputStream = files.getInputStream()){
 
-                amazonS3.putObject(new PutObjectRequest(bucket, fileName, inputStream, objectMetadata));
-
+                amazonS3.putObject(new PutObjectRequest(CloudAws.getBucket(), fileName, inputStream, objectMetadata));
 
             }catch (IOException e){
                 throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "파일 업로드 실패");
@@ -170,7 +192,6 @@ public class AwsService {
 
             fileURLs.add(Url);
             imageRepository.save(new ImageDto(Url).toEntity());
-
         });
 
         return fileURLs;
@@ -185,7 +206,6 @@ public class AwsService {
         return UUID.randomUUID().toString().concat(getFileExtension(fileName));
     }
 
-
     /**
      * 파일 확장자 획득
      * @param fileName 파일 이름
@@ -198,7 +218,6 @@ public class AwsService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "잘못된 형식의 파일" + fileName);
         }
     }
-
 }
 
 ```
