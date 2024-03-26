@@ -160,14 +160,8 @@ public class IndexRestController {
 @RequiredArgsConstructor
 public class AwsService {
 
-    @Value("${cloud.aws.region.static}")
-    private String region;
-    @Value("${cloud.aws.s3.bucket}")
-    private String bucket;
-
     private final ImageRepository imageRepository;
     private final AmazonS3 amazonS3;
-
 
     /**
      * 파일 저장
@@ -192,14 +186,12 @@ public class AwsService {
 
                 amazonS3.putObject(new PutObjectRequest(CloudAws.getBucket(), fileName, inputStream, objectMetadata));
 
-
             }catch (IOException e){
                 throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "파일 업로드 실패");
             }
 
             fileURLs.add(Url);
             imageRepository.save(new ImageDto(Url).toEntity());
-
         });
 
         return fileURLs;
@@ -214,7 +206,6 @@ public class AwsService {
         return UUID.randomUUID().toString().concat(getFileExtension(fileName));
     }
 
-
     /**
      * 파일 확장자 획득
      * @param fileName 파일 이름
@@ -227,7 +218,6 @@ public class AwsService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "잘못된 형식의 파일" + fileName);
         }
     }
-
 }
 
 ```
