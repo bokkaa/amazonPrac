@@ -3,7 +3,7 @@ package com.example.amazon_1.service;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PutObjectRequest;
-import com.example.amazon_1.config.CloudAws;
+import com.example.amazon_1.config.AwsProperties;
 import com.example.amazon_1.domain.dto.ImageDto;
 import com.example.amazon_1.repository.ImageRepository;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +25,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class AwsService {
 
-
+    private final AwsProperties awsProperties;
     private final ImageRepository imageRepository;
     private final AmazonS3 amazonS3;
 
@@ -43,7 +43,7 @@ public class AwsService {
         multipartFiles.forEach(files -> {
 
             String fileName = convertFileName(files.getOriginalFilename());
-            String Url = "https://" + CloudAws.getBucket() + ".s3." + CloudAws.getRegion() + ".amazonaws.com/" + fileName;
+            String Url = "https://" + awsProperties.getS3().getBucket() + ".s3." + awsProperties.getRegion() + ".amazonaws.com/" + fileName;
 
             ObjectMetadata objectMetadata = new ObjectMetadata();
             objectMetadata.setContentLength(files.getSize());
@@ -51,7 +51,7 @@ public class AwsService {
 
             try(InputStream inputStream = files.getInputStream()){
 
-                amazonS3.putObject(new PutObjectRequest(CloudAws.getBucket(), fileName, inputStream, objectMetadata));
+                amazonS3.putObject(new PutObjectRequest(awsProperties.getS3().getBucket(), fileName, inputStream, objectMetadata));
 
 
             }catch (IOException e){
