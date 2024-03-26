@@ -18,7 +18,6 @@ public class IndexRestController {
 
     private final AwsService awsService;
 
-
     /**
      * 파일 업로드
      * @param multipartFiles 저장될 파일
@@ -31,5 +30,4 @@ public class IndexRestController {
 
         return ResponseEntity.ok(awsService.fileUpload(multipartFiles));
     }
-
 }
