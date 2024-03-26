@@ -5,42 +5,86 @@
 
 ### 공통 클래스
 
-- com.example.amazon_1.config.CloudAws.java
+<details><summary>com.example.amazon_1.config.AwsProperties.java</summary>
 
 ```java
 
-public class CloudAws {
+@Component
+@ConfigurationProperties(prefix = "cloud.aws")
+public class AwsProperties {
+    private Credentials credentials;
+    private String region;
+    private String stackAuto;
+    private S3 s3;
 
-    @Value("${cloud.aws.credentials.access-key}")
-    private static String accessKey;
-
-    @Value("${cloud.aws.credentials.secret-key}")
-    private static String secretKey;
-
-    @Value("${cloud.aws.region.static}")
-    private static String region;
-
-    @Value("${cloud.aws.s3.bucket}")
-    private static String bucket;
-
-    public static String getAccessKey(){
-        return accessKey;
+    public Credentials getCredentials() {
+        return credentials;
     }
 
-    public static String getSecretKey() {
-        return secretKey;
+    public void setCredentials(Credentials credentials) {
+        this.credentials = credentials;
     }
 
-    public static String getRegion() {
+    public String getRegion() {
         return region;
     }
 
-    public static String getBucket() {
-        return bucket;
+    public void setRegion(String region) {
+        this.region = region;
+    }
+
+    public String getStackAuto() {
+        return stackAuto;
+    }
+
+    public void setStackAuto(String stackAuto) {
+        this.stackAuto = stackAuto;
+    }
+
+    public S3 getS3() {
+        return s3;
+    }
+
+    public void setS3(S3 s3) {
+        this.s3 = s3;
+    }
+
+    public static class Credentials {
+        private String accessKey;
+        private String secretKey;
+
+        public String getAccessKey() {
+            return accessKey;
+        }
+
+        public void setAccessKey(String accessKey) {
+            this.accessKey = accessKey;
+        }
+
+        public String getSecretKey() {
+            return secretKey;
+        }
+
+        public void setSecretKey(String secretKey) {
+            this.secretKey = secretKey;
+        }
+    }
+
+    public static class S3 {
+        private String bucket;
+
+        public String getBucket() {
+            return bucket;
+        }
+
+        public void setBucket(String bucket) {
+            this.bucket = bucket;
+        }
     }
 }
 
 ```
+</details> 
 
 ### S3 설정
 
@@ -51,16 +95,18 @@ public class CloudAws {
 @Configuration
 @RequiredArgsConstructor
 public class AwsS3Config {
+    
+    private final AwsProperties awsProperties;
+    
+    @Bean
+    public AmazonS3Client amazonS3Client(){
 
-@Bean
-public AmazonS3Client amazonS3Client(){
+        BasicAWSCredentials creds = new BasicAWSCredentials(awsProperties.getCredentials().getAccessKey(), awsProperties.getCredentials().getSecretKey());
 
-    BasicAWSCredentials creds = new BasicAWSCredentials(CloudAws.getAccessKey(), CloudAws.getSecretKey());
-
-    return (AmazonS3Client) AmazonS3ClientBuilder.standard()
-            .withCredentials(new AWSStaticCredentialsProvider(creds))
-            .withRegion(CloudAws.getRegion())
-            .build();
+        return (AmazonS3Client) AmazonS3ClientBuilder.standard()
+                .withCredentials(new AWSStaticCredentialsProvider(creds))
+                .withRegion(awsProperties.getRegion())
+                .build();
     }
 }
 
@@ -160,8 +206,12 @@ public class IndexRestController {
 @RequiredArgsConstructor
 public class AwsService {
 
+    public class AwsService {
+
+    private final AwsProperties awsProperties;
     private final ImageRepository imageRepository;
     private final AmazonS3 amazonS3;
+
 
     /**
      * 파일 저장
@@ -176,7 +226,7 @@ public class AwsService {
         multipartFiles.forEach(files -> {
 
             String fileName = convertFileName(files.getOriginalFilename());
-            String Url = "https://" + CloudAws.getBucket() + ".s3." + CloudAws.getRegion() + ".amazonaws.com/" + fileName;
+            String Url = "https://" + awsProperties.getS3().getBucket() + ".s3." + awsProperties.getRegion() + ".amazonaws.com/" + fileName;
 
             ObjectMetadata objectMetadata = new ObjectMetadata();
             objectMetadata.setContentLength(files.getSize());
@@ -184,7 +234,8 @@ public class AwsService {
 
             try(InputStream inputStream = files.getInputStream()){
 
-                amazonS3.putObject(new PutObjectRequest(CloudAws.getBucket(), fileName, inputStream, objectMetadata));
+                amazonS3.putObject(new PutObjectRequest(awsProperties.getS3().getBucket(), fileName, inputStream, objectMetadata));
+
 
             }catch (IOException e){
                 throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "파일 업로드 실패");
@@ -192,10 +243,12 @@ public class AwsService {
 
             fileURLs.add(Url);
             imageRepository.save(new ImageDto(Url).toEntity());
+
         });
 
         return fileURLs;
     }
+
 
     /**
      * 파일 이름 랜덤 생성
