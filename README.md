@@ -23,7 +23,6 @@ public class CloudAws {
     @Value("${cloud.aws.s3.bucket}")
     private static String bucket;
 
-
     public static String getAccessKey(){
         return accessKey;
     }
@@ -62,7 +61,6 @@ public AmazonS3Client amazonS3Client(){
             .withCredentials(new AWSStaticCredentialsProvider(creds))
             .withRegion(CloudAws.getRegion())
             .build();
-
     }
 }
 
