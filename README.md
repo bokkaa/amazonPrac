@@ -3,88 +3,6 @@
 ### AmazonS3, RDS, MySql 연동 확인
 
 
-### 공통 클래스
-
-<details><summary>com.example.amazon_1.config.AwsProperties.java</summary>
-
-```java
-
-@Component
-@ConfigurationProperties(prefix = "cloud.aws")
-public class AwsProperties {
-    private Credentials credentials;
-    private String region;
-    private String stackAuto;
-    private S3 s3;
-
-    public Credentials getCredentials() {
-        return credentials;
-    }
-
-    public void setCredentials(Credentials credentials) {
-        this.credentials = credentials;
-    }
-
-    public String getRegion() {
-        return region;
-    }
-
-    public void setRegion(String region) {
-        this.region = region;
-    }
-
-    public String getStackAuto() {
-        return stackAuto;
-    }
-
-    public void setStackAuto(String stackAuto) {
-        this.stackAuto = stackAuto;
-    }
-
-    public S3 getS3() {
-        return s3;
-    }
-
-    public void setS3(S3 s3) {
-        this.s3 = s3;
-    }
-
-    public static class Credentials {
-        private String accessKey;
-        private String secretKey;
-
-        public String getAccessKey() {
-            return accessKey;
-        }
-
-        public void setAccessKey(String accessKey) {
-            this.accessKey = accessKey;
-        }
-
-        public String getSecretKey() {
-            return secretKey;
-        }
-
-        public void setSecretKey(String secretKey) {
-            this.secretKey = secretKey;
-        }
-    }
-
-    public static class S3 {
-        private String bucket;
-
-        public String getBucket() {
-            return bucket;
-        }
-
-        public void setBucket(String bucket) {
-            this.bucket = bucket;
-        }
-    }
-}
-
-```
-</details> 
 
 ### S3 설정
 
@@ -93,19 +11,22 @@ public class AwsProperties {
 ```java
 
 @Configuration
-@RequiredArgsConstructor
 public class AwsS3Config {
-    
-    private final AwsProperties awsProperties;
-    
+
+    @Value("${cloud.aws.credentials.access-key}")
+    private String accessKey;
+    @Value("${cloud.aws.credentials.secret-key}")
+    private String secretKey;
+    @Value("${cloud.aws.region.static}")
+    private String region;
+
     @Bean
     public AmazonS3Client amazonS3Client(){
-
-        BasicAWSCredentials creds = new BasicAWSCredentials(awsProperties.getCredentials().getAccessKey(), awsProperties.getCredentials().getSecretKey());
+        BasicAWSCredentials credentials = new BasicAWSCredentials(accessKey, secretKey);
 
         return (AmazonS3Client) AmazonS3ClientBuilder.standard()
-                .withCredentials(new AWSStaticCredentialsProvider(creds))
-                .withRegion(awsProperties.getRegion())
+                .withCredentials(new AWSStaticCredentialsProvider(credentials))
+                .withRegion(region)
                 .build();
     }
 }
@@ -204,29 +125,27 @@ public class IndexRestController {
 @Service
 @Transactional(readOnly = true)
 @RequiredArgsConstructor
-public class AwsService {
+public class AwsS3Service {
 
-    public class AwsService {
+    @Value("${cloud.aws.s3.bucket}")
+    private String bucket;
 
-    private final AwsProperties awsProperties;
-    private final ImageRepository imageRepository;
+    @Value("${cloud.aws.region.static}")
+    private String region;
+
     private final AmazonS3 amazonS3;
+    private final ImageRepository imageRepository;
 
 
-    /**
-     * 파일 저장
-     * @param multipartFiles 저장될 파일들
-     * @return 파일 URL
-     */
     @Transactional
-    public List<String> fileUpload(List<MultipartFile> multipartFiles){
+    public List<String> insertFile(List<MultipartFile> multipartFiles){
 
         List<String> fileURLs = new ArrayList<>();
 
         multipartFiles.forEach(files -> {
 
             String fileName = convertFileName(files.getOriginalFilename());
-            String Url = "https://" + awsProperties.getS3().getBucket() + ".s3." + awsProperties.getRegion() + ".amazonaws.com/" + fileName;
+            String URLs = "https://" + bucket + ".s3." +region+".amazonaws.com/" +fileName;
 
             ObjectMetadata objectMetadata = new ObjectMetadata();
             objectMetadata.setContentLength(files.getSize());
@@ -234,15 +153,14 @@ public class AwsService {
 
             try(InputStream inputStream = files.getInputStream()){
 
-                amazonS3.putObject(new PutObjectRequest(awsProperties.getS3().getBucket(), fileName, inputStream, objectMetadata));
-
+                amazonS3.putObject(new PutObjectRequest(bucket, fileName, inputStream, objectMetadata));
 
             }catch (IOException e){
                 throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "파일 업로드 실패");
             }
 
-            fileURLs.add(Url);
-            imageRepository.save(new ImageDto(Url).toEntity());
+            fileURLs.add(URLs);
+            imageRepository.save(new ImageDto(URLs).toEntity());
 
         });
 
