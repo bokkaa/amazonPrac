@@ -152,16 +152,12 @@ public class AwsS3Service {
             objectMetadata.setContentType(files.getContentType());
 
             try(InputStream inputStream = files.getInputStream()){
-
                 amazonS3.putObject(new PutObjectRequest(bucket, fileName, inputStream, objectMetadata));
-
+                imageRepository.save(new ImageDto(URLs).toEntity());
+                fileURLs.add(URLs);
             }catch (IOException e){
                 throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "파일 업로드 실패");
             }
-
-            fileURLs.add(URLs);
-            imageRepository.save(new ImageDto(URLs).toEntity());
-
         });
 
         return fileURLs;
