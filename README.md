@@ -1,7 +1,7 @@
 # amazonPrac
 
 ### AmazonS3, RDS, MySql 연동 확인
-
+(EC2, Route53(도메인 연결), ELB, RDS 설정이 적용된 상태)
 
 
 ### S3 설정
