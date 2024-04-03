@@ -98,7 +98,7 @@ public class ImageDto {
 @RequestMapping("/files")
 public class IndexRestController {
 
-    private final AwsService awsService;
+    private final AwsS3Service AwsS3Service;
     
     /**
      * 파일 업로드
@@ -110,7 +110,7 @@ public class IndexRestController {
             @RequestParam("multipartFiles") List<MultipartFile> multipartFiles
     ){
 
-        return ResponseEntity.ok(awsService.fileUpload(multipartFiles));
+        return ResponseEntity.ok(awsService.insertFile(multipartFiles));
     }
 }
 
